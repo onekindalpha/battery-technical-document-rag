@@ -2,14 +2,21 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
+from app.config import settings
 from app.schemas import AskRequest, AskResponse, IngestResponse
 from app.service import service
 
 router = APIRouter(prefix="/api")
+
+
+def safe_filename(filename: str | None) -> str:
+    name = Path(filename or "").name
+    if not name:
+        raise ValueError("Uploaded file must have a filename.")
+    return name
 
 
 @router.get("/health")
@@ -24,22 +31,20 @@ def documents() -> dict[str, list[str]]:
 
 @router.post("/ingest", response_model=IngestResponse)
 def ingest(files: list[UploadFile] = File(...)) -> IngestResponse:
-    temporary_paths: list[Path] = []
     try:
+        saved_paths: list[Path] = []
+        settings.upload_path.mkdir(parents=True, exist_ok=True)
         for uploaded_file in files:
-            suffix = Path(uploaded_file.filename or "").suffix
-            with NamedTemporaryFile(delete=False, suffix=suffix) as temporary_file:
+            filename = safe_filename(uploaded_file.filename)
+            target_path = settings.upload_path / filename
+            with target_path.open("wb") as temporary_file:
                 shutil.copyfileobj(uploaded_file.file, temporary_file)
-                temporary_paths.append(Path(temporary_file.name))
-        return service.ingest_paths(temporary_paths)
+            saved_paths.append(target_path)
+        return service.ingest_paths(saved_paths, copy_uploads=False)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    finally:
-        for path in temporary_paths:
-            path.unlink(missing_ok=True)
 
 
 @router.post("/ask", response_model=AskResponse)
 def ask(request: AskRequest) -> AskResponse:
     return service.ask(request.question, request.top_k)
-

@@ -1,10 +1,14 @@
 # Battery Technical Document RAG Assistant
 
-배터리 RUL 예측 프로젝트에서 확장한 도메인 문서 검색·질의응답 서비스입니다. 배터리 기술문서를 업로드하면 문서를 chunk 단위로 분할하고, lightweight lexical embedding과 cosine similarity 기반 persistent vector store를 사용해 질문과 유사한 근거 구간을 검색합니다. `GROQ_API_KEY`가 설정된 경우 검색 문맥을 기반으로 답변을 생성하며, API 키가 없어도 검색 결과와 출처를 확인할 수 있습니다.
+Battery RUL AI Inference System에서 확장한 기술문서 RAG Assistant입니다. 배터리 RUL 프로젝트의 README, 실험 메모, 논문 요약, 데이터 검증 기준, BMS 운영 관점 문서를 검색하고, 관련 근거 chunk를 기반으로 답변을 생성합니다.
+
+이 프로젝트는 단순 챗봇이 아니라, Battery RUL 포트폴리오를 설명하고 다음 실험·PoC 방향을 검토하기 위한 **RAG 기반 Research Copilot MVP**로 설계했습니다. 현재는 문서 업로드, chunking, 검색, citation 기반 답변을 구현했으며, 향후 실험 계획 생성, 데이터 누수 체크리스트 생성, PoC 후보 제안 같은 agentic workflow로 확장할 수 있습니다.
 
 ## Why this project
 
-기존 [Battery RUL AI Inference System](https://github.com/onekindalpha/battery-rul-ai-inference-system)은 시계열 기반 RUL 예측 결과를 API·대시보드·배포 환경으로 연결합니다. 이 프로젝트는 별도 서비스로 분리하여, 배터리 운영 및 분석 과정에서 기술문서의 근거를 검색하고 답변에 연결하는 RAG 흐름을 구현합니다.
+기존 [Battery RUL AI Inference System](https://github.com/onekindalpha/battery-rul-ai-inference-system)은 시계열 기반 RUL 예측 결과를 API·대시보드·배포 환경으로 연결합니다. 이 프로젝트는 그 위에 기술문서 검색 계층을 추가해, 모델 설계 의도와 데이터 검증 기준을 문서 근거와 함께 설명할 수 있도록 만든 별도 AI service PoC입니다.
+
+Battery RUL 모델은 모델 성능 수치만으로 운영 활용성을 설명하기 어렵습니다. 초기 cycle 기반 예측에서는 데이터 누수 여부, 배터리별 실험 조건 차이, 관측 비율, feature 품질, 불확실성 표시 방식까지 함께 검토해야 합니다. 이 RAG Assistant는 이러한 판단 기준을 문서화하고, 질문이 들어오면 관련 근거를 찾아 답변하는 흐름을 구현합니다.
 
 ## Features
 
@@ -18,6 +22,7 @@
 - API 키가 없는 환경을 위한 retrieval-only fallback
 - FastAPI API와 lightweight web UI
 - Docker 기반 실행
+- 예시 질문 기반 portfolio demo flow
 
 ## Architecture
 
@@ -81,6 +86,7 @@ This repository is intentionally separate from the Battery RUL inference reposit
 
 1. Inference application: time-series model serving and visualization
 2. Document RAG application: ingestion, retrieval, grounded generation, and citations
+3. Research Copilot direction: experiment planning, data quality checklist generation, and PoC proposal support
 
 ## Security note
 

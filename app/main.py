@@ -13,7 +13,7 @@ service.ingest_samples_if_empty()
 
 app = FastAPI(
     title="Battery Technical Document RAG Assistant",
-    description="Domain RAG portfolio for battery technical documents.",
+    description="Battery RUL research copilot MVP with document RAG.",
     version="0.1.0",
 )
 app.include_router(router)
@@ -27,7 +27,7 @@ def index() -> str:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Battery Technical Document RAG Assistant</title>
+  <title>Battery RUL Research Copilot</title>
   <style>
     :root {
       color-scheme: dark;
@@ -127,6 +127,26 @@ def index() -> str:
       background: var(--accent-2);
       color: #08101e;
     }
+    .examples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .example {
+      border: 1px solid var(--line);
+      background: #101722;
+      color: var(--text);
+      padding: 9px 11px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .note {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
     h2 {
       margin: 0 0 12px;
       font-size: 16px;
@@ -147,6 +167,11 @@ def index() -> str:
     .sources {
       margin-top: 18px;
     }
+    .service-note {
+      margin-top: 18px;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }
     @media (max-width: 820px) {
       main { width: min(100vw - 24px, 680px); margin: 20px auto; }
       .layout { grid-template-columns: 1fr; }
@@ -157,11 +182,20 @@ def index() -> str:
 </head>
 <body>
   <main>
-    <h1>Battery Technical Document RAG Assistant</h1>
-    <p class="subtitle">Battery RUL 문서를 검색하고, 근거 chunk와 함께 답변을 확인합니다.</p>
+    <h1>Battery RUL Research Copilot</h1>
+    <p class="subtitle">Battery RUL 프로젝트의 논문 요약, 실험 메모, 데이터 검증 기준을 검색하고 근거 chunk와 함께 답변을 확인합니다.</p>
     <div class="layout">
       <section>
         <div id="chat" class="panel chat"></div>
+        <div class="examples" aria-label="예시 질문">
+          <button class="example" data-question="초기 cycle 기반 RUL 예측에서 데이터 누수를 막으려면 무엇을 확인해야 하나요?">데이터 누수 점검</button>
+          <button class="example" data-question="RUL과 SoH는 무엇이 다르고 대시보드에서는 어떻게 보여줘야 하나요?">RUL / SoH 차이</button>
+          <button class="example" data-question="배터리 RUL 모델에서 uncertainty band를 함께 보여주는 이유는 무엇인가요?">불확실성 표시</button>
+          <button class="example" data-question="배터리 모니터링 앱에서 precomputed 결과와 live reinference 결과를 왜 구분해야 하나요?">추론 결과 구분</button>
+          <button class="example" data-question="배터리 데이터 전처리에서 capacity, 전압, 전류, 온도 feature는 어떤 점을 확인해야 하나요?">전처리 체크리스트</button>
+          <button class="example" data-question="Battery RUL 프로젝트를 다음 PoC로 확장한다면 어떤 실험을 먼저 설계해야 하나요?">다음 PoC 방향</button>
+          <button class="example" data-question="이 프로젝트를 AI Technical Consultant 포트폴리오로 설명할 때 핵심 구현 흐름은 무엇인가요?">포트폴리오 설명</button>
+        </div>
         <div class="input-row">
           <textarea id="question" placeholder="예: 초기 cycle 기반 RUL 예측에서 데이터 누수를 막으려면 무엇을 확인해야 하나요?"></textarea>
           <button id="ask">검색</button>
@@ -169,12 +203,17 @@ def index() -> str:
       </section>
       <aside class="panel">
         <h2>문서 업로드</h2>
+        <p class="note">기본 배터리 RUL 샘플 문서가 이미 색인되어 있어 업로드 없이도 검색할 수 있습니다. 논문 요약, 실험 기록, README, 운영 메모를 추가하면 같은 방식으로 근거 검색에 포함됩니다.</p>
         <input id="files" type="file" multiple accept=".pdf,.txt,.md" />
         <button id="upload" class="secondary">벡터DB에 추가</button>
         <div id="status" class="status"></div>
         <div class="sources">
           <h2>Indexed Sources</h2>
           <ul id="sources"></ul>
+        </div>
+        <div class="service-note">
+          <h2>Service Use Case</h2>
+          <p class="note">Battery RUL AI Inference System을 보조하는 RAG 기반 Research Copilot MVP입니다. 현재는 근거 검색과 답변 생성을 수행하며, 향후 실험 계획 생성, 데이터 누수 체크리스트, PoC 후보 제안 같은 agentic workflow로 확장할 수 있습니다.</p>
         </div>
       </aside>
     </div>
@@ -253,6 +292,12 @@ def index() -> str:
       }
     });
     upload.addEventListener("click", uploadFiles);
+    document.querySelectorAll(".example").forEach((button) => {
+      button.addEventListener("click", () => {
+        question.value = button.dataset.question;
+        question.focus();
+      });
+    });
     loadSources();
   </script>
 </body>
