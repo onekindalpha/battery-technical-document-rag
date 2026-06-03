@@ -2,7 +2,7 @@
 
 Battery RUL AI Inference System에서 확장한 기술문서 RAG Assistant입니다. 배터리 RUL 프로젝트의 README, 실험 메모, 논문 요약, 데이터 검증 기준, BMS 운영 관점 문서를 검색하고, 관련 근거 chunk를 기반으로 답변을 생성합니다.
 
-이 프로젝트는 단순 챗봇이 아니라, Battery RUL 포트폴리오를 설명하고 다음 실험·PoC 방향을 검토하기 위한 **RAG 기반 Research Copilot MVP**로 설계했습니다. 현재는 문서 업로드, chunking, 검색, citation 기반 답변을 구현했으며, 향후 실험 계획 생성, 데이터 누수 체크리스트 생성, PoC 후보 제안 같은 agentic workflow로 확장할 수 있습니다.
+이 프로젝트는 단순 챗봇이 아니라, Battery RUL 예측 시스템 운영 과정에서 데이터 품질, 예측 결과, 실험 기준, PoC 방향을 검토하기 위한 **RAG 기반 Research Copilot MVP**로 설계했습니다. 현재는 문서 업로드, chunking, 검색, citation 기반 답변을 구현했으며, 향후 운영 점검 요약, 데이터 누수 체크리스트 생성, 예측 이상 원인 분석, 다음 실험 설계 같은 agentic workflow로 확장할 수 있습니다.
 
 ## Why this project
 
@@ -23,6 +23,26 @@ Battery RUL 모델은 모델 성능 수치만으로 운영 활용성을 설명�
 - FastAPI API와 lightweight web UI
 - Docker 기반 실행
 - 예시 질문 기반 portfolio demo flow
+
+## What this project demonstrates
+
+이 프로젝트는 RAG를 단순 API 호출 기능으로만 사용하지 않고, 다음 흐름을 직접 구현하고 설명하는 것을 목표로 합니다.
+
+1. **검색 기반 생성(RAG) 시스템 동작 원리 이해**
+   - 사용자의 질문을 그대로 LLM에 전달하지 않고, 먼저 관련 문서 chunk를 검색합니다.
+   - 검색된 근거 문맥을 LLM prompt에 함께 넣어 답변을 생성합니다.
+   - 답변과 함께 source chunk를 표시해 hallucination 위험을 줄이고 검증 가능성을 높입니다.
+
+2. **RAG 시스템 구현**
+   - PDF, Markdown, TXT 문서를 읽고 chunk 단위로 분할합니다.
+   - chunk마다 metadata를 생성하고, lightweight lexical embedding으로 검색 벡터를 구성합니다.
+   - persistent vector store에 저장한 뒤, 질문과 유사한 문서 구간을 cosine similarity로 검색합니다.
+   - 검색 결과를 Groq LLM에 전달해 grounded answer를 생성합니다.
+
+3. **현업 적용 관점**
+   - 사내 기술문서, 운영 매뉴얼, 실험 기록, 논문 요약, PoC 검토 문서를 검색하는 기술지원형 AI 서비스로 확장할 수 있습니다.
+   - Battery RUL 예측 시스템 운영 관점에서는 데이터 품질 점검, 예측 결과 해석, 실험 조건 검토, 모델 개선 방향 검토에 활용할 수 있습니다.
+   - 향후 agentic workflow를 붙이면 운영 점검 요약, 데이터 누수 체크리스트 작성, 예측 이상 원인 분석, 다음 실험 설계 같은 업무 보조 기능으로 확장할 수 있습니다.
 
 ## Architecture
 
@@ -86,7 +106,7 @@ This repository is intentionally separate from the Battery RUL inference reposit
 
 1. Inference application: time-series model serving and visualization
 2. Document RAG application: ingestion, retrieval, grounded generation, and citations
-3. Research Copilot direction: experiment planning, data quality checklist generation, and PoC proposal support
+3. Research Copilot direction: operation review, data quality checklist generation, anomaly cause analysis, and experiment planning
 
 ## Security note
 

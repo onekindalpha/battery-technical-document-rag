@@ -83,14 +83,59 @@ def index() -> str:
       border-radius: 8px;
       padding: 14px;
       background: var(--panel-2);
-      white-space: pre-wrap;
       line-height: 1.55;
+    }
+    .message p {
+      margin: 0 0 10px;
+    }
+    .message p:last-child {
+      margin-bottom: 0;
+    }
+    .message strong {
+      color: #ffffff;
+      font-weight: 800;
     }
     .message.user {
       border-color: rgba(125, 167, 255, 0.55);
+      white-space: pre-wrap;
     }
     .message.assistant {
       border-color: rgba(70, 194, 163, 0.55);
+    }
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .source-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0d131c;
+      padding: 11px;
+    }
+    .source-name {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 750;
+      word-break: break-all;
+    }
+    .source-meta {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
     }
     .input-row {
       display: grid;
@@ -172,6 +217,25 @@ def index() -> str:
       border-top: 1px solid var(--line);
       padding-top: 16px;
     }
+    .capability-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .capability {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0d131c;
+      padding: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .capability strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
     @media (max-width: 820px) {
       main { width: min(100vw - 24px, 680px); margin: 20px auto; }
       .layout { grid-template-columns: 1fr; }
@@ -194,7 +258,8 @@ def index() -> str:
           <button class="example" data-question="배터리 모니터링 앱에서 precomputed 결과와 live reinference 결과를 왜 구분해야 하나요?">추론 결과 구분</button>
           <button class="example" data-question="배터리 데이터 전처리에서 capacity, 전압, 전류, 온도 feature는 어떤 점을 확인해야 하나요?">전처리 체크리스트</button>
           <button class="example" data-question="Battery RUL 프로젝트를 다음 PoC로 확장한다면 어떤 실험을 먼저 설계해야 하나요?">다음 PoC 방향</button>
-          <button class="example" data-question="이 프로젝트를 AI Technical Consultant 포트폴리오로 설명할 때 핵심 구현 흐름은 무엇인가요?">포트폴리오 설명</button>
+          <button class="example" data-question="운영 중인 배터리의 RUL 예측 결과를 점검할 때 어떤 항목을 우선 확인해야 하나요?">운영 점검 요약</button>
+          <button class="example" data-question="RUL 예측 결과가 갑자기 흔들릴 때 데이터와 모델 관점에서 어떤 원인을 확인해야 하나요?">예측 이상 원인</button>
         </div>
         <div class="input-row">
           <textarea id="question" placeholder="예: 초기 cycle 기반 RUL 예측에서 데이터 누수를 막으려면 무엇을 확인해야 하나요?"></textarea>
@@ -213,7 +278,24 @@ def index() -> str:
         </div>
         <div class="service-note">
           <h2>Service Use Case</h2>
-          <p class="note">Battery RUL AI Inference System을 보조하는 RAG 기반 Research Copilot MVP입니다. 현재는 근거 검색과 답변 생성을 수행하며, 향후 실험 계획 생성, 데이터 누수 체크리스트, PoC 후보 제안 같은 agentic workflow로 확장할 수 있습니다.</p>
+          <p class="note">Battery RUL AI Inference System을 보조하는 RAG 기반 Research Copilot MVP입니다. 현재는 근거 검색과 답변 생성을 수행하며, 향후 운영 점검 요약, 데이터 품질 체크리스트, 예측 이상 원인 분석, 다음 실험 설계 같은 agentic workflow로 확장할 수 있습니다.</p>
+        </div>
+        <div class="service-note">
+          <h2>RAG Pipeline</h2>
+          <div class="capability-list">
+            <div class="capability">
+              <strong>1. Retrieval</strong>
+              질문과 유사한 기술문서 chunk를 먼저 검색합니다.
+            </div>
+            <div class="capability">
+              <strong>2. Grounded Generation</strong>
+              검색된 근거를 LLM prompt에 넣어 답변을 생성합니다.
+            </div>
+            <div class="capability">
+              <strong>3. Enterprise Use</strong>
+              사내 기술문서, 실험 메모, PoC 자료 검색 서비스로 확장할 수 있습니다.
+            </div>
+          </div>
         </div>
       </aside>
     </div>
@@ -227,12 +309,55 @@ def index() -> str:
     const status = document.getElementById("status");
     const sources = document.getElementById("sources");
 
+    function escapeHtml(text) {
+      return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function renderMarkdownLite(text) {
+      const escaped = escapeHtml(text);
+      return escaped
+        .replace(/\\*\\*(.+?)\\*\\*/g, "<strong>$1</strong>")
+        .split(/\\n{2,}/)
+        .map((paragraph) => `<p>${paragraph.replaceAll("\\n", "<br>")}</p>`)
+        .join("");
+    }
+
     function addMessage(role, text) {
       const div = document.createElement("div");
       div.className = `message ${role}`;
       div.textContent = text;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
+    }
+
+    function addAnswer(answer, retrievedSources) {
+      const div = document.createElement("div");
+      div.className = "message assistant";
+      const sourceCards = retrievedSources.map((source) => `
+        <div class="source-card">
+          <div class="source-name">${escapeHtml(source.source)}#${source.chunk_index}</div>
+          <div class="source-meta">Similarity distance ${source.distance?.toFixed(3) ?? "n/a"}</div>
+        </div>
+      `).join("");
+      div.innerHTML = `
+        <div class="result-header">
+          <span>Grounded Answer</span>
+          <span>${retrievedSources.length} sources</span>
+        </div>
+        <div>${renderMarkdownLite(answer)}</div>
+        <div class="source-grid">${sourceCards}</div>
+      `;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function resetChat() {
+      chat.innerHTML = "";
     }
 
     async function loadSources() {
@@ -249,6 +374,7 @@ def index() -> str:
     async function askQuestion() {
       const text = question.value.trim();
       if (!text) return;
+      resetChat();
       addMessage("user", text);
       question.value = "";
       ask.disabled = true;
@@ -260,8 +386,7 @@ def index() -> str:
           body: JSON.stringify({ question: text })
         });
         const data = await res.json();
-        const labels = data.sources.map((s) => `- ${s.source}#${s.chunk_index} (${s.distance?.toFixed(3) ?? "n/a"})`).join("\\n");
-        addMessage("assistant", `${data.answer}\\n\\n검색 출처\\n${labels}`);
+        addAnswer(data.answer, data.sources);
       } catch (error) {
         addMessage("assistant", `오류: ${error.message}`);
       } finally {
