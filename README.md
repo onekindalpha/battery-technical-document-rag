@@ -1,12 +1,3 @@
----
-title: Battery Technical Document RAG
-emoji: 🔋
-colorFrom: green
-colorTo: blue
-sdk: docker
-pinned: false
----
-
 # Battery Technical Document RAG Assistant
 
 Battery RUL AI Inference System의 실험 메모, 데이터 품질 기준, 모델 추론·운영 문서를 검색하고 근거 기반 답변을 제공하는 technical document RAG service입니다.
