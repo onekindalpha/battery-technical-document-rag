@@ -1,7 +1,7 @@
 ---
 title: Battery Technical Document RAG
 emoji: 🔋
-colorFrom: emerald
+colorFrom: green
 colorTo: blue
 sdk: docker
 pinned: false
