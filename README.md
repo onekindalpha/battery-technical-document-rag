@@ -1,3 +1,12 @@
+---
+title: Battery Technical Document RAG
+emoji: 🔋
+colorFrom: emerald
+colorTo: blue
+sdk: docker
+pinned: false
+---
+
 # Battery Technical Document RAG Assistant
 
 Battery RUL AI Inference System에서 확장한 기술문서 RAG Assistant입니다. 배터리 RUL 프로젝트의 README, 실험 메모, 논문 요약, 데이터 검증 기준, BMS 운영 관점 문서를 검색하고, 관련 근거 chunk를 기반으로 답변을 생성합니다.
