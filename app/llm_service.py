@@ -48,6 +48,8 @@ class LLMService:
             return self._rate_limit_fallback(sources), "rate-limit-fallback"
         except APIStatusError as error:
             return self._api_error_fallback(sources, error.status_code), "api-error-fallback"
+        except Exception as error:
+            return self._generic_error_fallback(sources, error), "llm-error-fallback"
         return completion.choices[0].message.content or "", "rag-generation"
 
     @staticmethod
@@ -80,5 +82,17 @@ class LLMService:
         return (
             f"LLM API 호출 중 오류가 발생했습니다. 상태 코드: {status_code}. "
             "아래 검색 근거를 기준으로 먼저 검토해 주세요.\n\n"
+            f"{excerpts}"
+        )
+
+    @staticmethod
+    def _generic_error_fallback(sources: list[SourceChunk], error: Exception) -> str:
+        excerpts = "\n\n".join(
+            f"- [{source.citation}] {source.text[:320]}..." for source in sources
+        )
+        return (
+            "LLM 응답 생성 중 일시적인 오류가 발생해 검색 근거를 먼저 제공합니다. "
+            f"오류 유형: {type(error).__name__}. "
+            "질문이 현재 문서 범위를 벗어난 경우에는 관련 문서를 추가하거나, 질문을 Battery RUL 운영·데이터 품질·모델 추론 관점으로 좁혀 주세요.\n\n"
             f"{excerpts}"
         )
