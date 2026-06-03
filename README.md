@@ -22,7 +22,7 @@ Battery RUL 모델은 모델 성능 수치만으로 운영 활용성을 설명�
 - API 키가 없는 환경을 위한 retrieval-only fallback
 - FastAPI API와 lightweight web UI
 - Docker 기반 실행
-- 예시 질문 기반 portfolio demo flow
+- 예시 질문 기반 운영 점검 flow
 
 ## What this project demonstrates
 
@@ -98,7 +98,7 @@ Interactive API documentation is available at `http://localhost:7860/docs`.
 | `CHUNK_SIZE` | Character length of each chunk. |
 | `CHUNK_OVERLAP` | Overlap between adjacent chunks. |
 
-`data/sample_docs`에는 공개 데모를 위한 짧은 배터리 RUL 설명 문서가 포함되어 있습니다. 논문 원문을 복제하지 않고, 프로젝트에서 확인한 문제의식과 운영 관점을 직접 정리한 샘플 코퍼스입니다.
+`data/knowledge_base`에는 공개 데모를 위한 짧은 배터리 RUL 기술문서가 포함되어 있습니다. 논문 원문을 복제하지 않고, 프로젝트에서 확인한 문제의식과 운영 관점을 직접 정리한 내부 지식베이스 형태의 코퍼스입니다.
 
 ## Portfolio scope
 

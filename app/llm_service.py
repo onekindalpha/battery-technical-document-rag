@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from groq import Groq
+from groq import APIStatusError, Groq, RateLimitError
 
 from app.schemas import SourceChunk
 
 SYSTEM_PROMPT = """You are a battery technical document assistant.
 Answer only from the supplied context. If the context is insufficient, say so clearly.
 Write the answer in Korean. Cite evidence with labels such as [source.md#0].
-Do not invent values, experimental conditions, or conclusions."""
+Do not invent values, experimental conditions, or conclusions.
+Avoid repeating the same point. Merge overlapping evidence into one concise answer."""
+
+MAX_CONTEXT_CHARS_PER_SOURCE = 520
 
 
 class LLMService:
@@ -25,19 +28,26 @@ class LLMService:
             return self._retrieval_only_answer(sources), "retrieval-only"
 
         context = "\n\n".join(
-            f"[{source.citation}]\n{source.text}" for source in sources
+            f"[{source.citation}]\n{source.text[:MAX_CONTEXT_CHARS_PER_SOURCE]}"
+            for source in sources
         )
-        completion = self.client.chat.completions.create(
-            model=self.model,
-            temperature=0.1,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": f"질문: {question}\n\n검색 문맥:\n{context}",
-                },
-            ],
-        )
+        try:
+            completion = self.client.chat.completions.create(
+                model=self.model,
+                temperature=0.1,
+                max_tokens=520,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {
+                        "role": "user",
+                        "content": f"질문: {question}\n\n검색 문맥:\n{context}",
+                    },
+                ],
+            )
+        except RateLimitError:
+            return self._rate_limit_fallback(sources), "rate-limit-fallback"
+        except APIStatusError as error:
+            return self._api_error_fallback(sources, error.status_code), "api-error-fallback"
         return completion.choices[0].message.content or "", "rag-generation"
 
     @staticmethod
@@ -51,3 +61,24 @@ class LLMService:
             f"{excerpts}"
         )
 
+    @staticmethod
+    def _rate_limit_fallback(sources: list[SourceChunk]) -> str:
+        excerpts = "\n\n".join(
+            f"- [{source.citation}] {source.text[:320]}..." for source in sources
+        )
+        return (
+            "현재 LLM API 사용량 제한에 걸려 생성형 답변 대신 검색 근거를 제공합니다. "
+            "잠시 후 다시 질문하면 LLM 기반 답변이 생성됩니다.\n\n"
+            f"{excerpts}"
+        )
+
+    @staticmethod
+    def _api_error_fallback(sources: list[SourceChunk], status_code: int) -> str:
+        excerpts = "\n\n".join(
+            f"- [{source.citation}] {source.text[:320]}..." for source in sources
+        )
+        return (
+            f"LLM API 호출 중 오류가 발생했습니다. 상태 코드: {status_code}. "
+            "아래 검색 근거를 기준으로 먼저 검토해 주세요.\n\n"
+            f"{excerpts}"
+        )

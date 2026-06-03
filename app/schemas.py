@@ -23,9 +23,9 @@ class AskResponse(BaseModel):
     answer: str
     sources: list[SourceChunk]
     mode: str
+    response_time_ms: float
 
 
 class IngestResponse(BaseModel):
     files: list[str]
     chunks_added: int
-

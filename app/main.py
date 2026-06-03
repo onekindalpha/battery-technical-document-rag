@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from app.api import router
 from app.service import service
 
-service.ingest_samples_if_empty()
+service.ingest_knowledge_base()
 
 app = FastAPI(
     title="Battery Technical Document RAG Assistant",
@@ -113,6 +113,25 @@ def index() -> str:
       font-weight: 700;
       letter-spacing: 0.02em;
       text-transform: uppercase;
+    }
+    .result-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #0d131c;
+      padding: 5px 9px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .metric strong {
+      color: var(--text);
+      font-weight: 800;
     }
     .source-grid {
       display: grid;
@@ -268,7 +287,7 @@ def index() -> str:
       </section>
       <aside class="panel">
         <h2>문서 업로드</h2>
-        <p class="note">기본 배터리 RUL 샘플 문서가 이미 색인되어 있어 업로드 없이도 검색할 수 있습니다. 논문 요약, 실험 기록, README, 운영 메모를 추가하면 같은 방식으로 근거 검색에 포함됩니다.</p>
+        <p class="note">기본 배터리 RUL knowledge base는 이미 색인되어 있어 파일을 선택하지 않아도 검색할 수 있습니다. 아래 업로드는 논문 요약, 실험 기록, README, 운영 메모를 추가로 넣고 싶을 때만 사용합니다.</p>
         <input id="files" type="file" multiple accept=".pdf,.txt,.md" />
         <button id="upload" class="secondary">벡터DB에 추가</button>
         <div id="status" class="status"></div>
@@ -308,6 +327,7 @@ def index() -> str:
     const files = document.getElementById("files");
     const status = document.getElementById("status");
     const sources = document.getElementById("sources");
+    let isAsking = false;
 
     function escapeHtml(text) {
       return text
@@ -321,7 +341,7 @@ def index() -> str:
     function renderMarkdownLite(text) {
       const escaped = escapeHtml(text);
       return escaped
-        .replace(/\\*\\*(.+?)\\*\\*/g, "<strong>$1</strong>")
+        .replace(/[*][*](.+?)[*][*]/g, "<strong>$1</strong>")
         .split(/\\n{2,}/)
         .map((paragraph) => `<p>${paragraph.replaceAll("\\n", "<br>")}</p>`)
         .join("");
@@ -335,7 +355,13 @@ def index() -> str:
       chat.scrollTop = chat.scrollHeight;
     }
 
-    function addAnswer(answer, retrievedSources) {
+    function formatResponseTime(ms) {
+      if (typeof ms !== "number") return "n/a";
+      if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
+      return `${ms.toFixed(1)}ms`;
+    }
+
+    function addAnswer(answer, retrievedSources, mode, responseTimeMs) {
       const div = document.createElement("div");
       div.className = "message assistant";
       const sourceCards = retrievedSources.map((source) => `
@@ -349,6 +375,10 @@ def index() -> str:
           <span>Grounded Answer</span>
           <span>${retrievedSources.length} sources</span>
         </div>
+        <div class="result-meta">
+          <span class="metric">Mode <strong>${escapeHtml(mode || "unknown")}</strong></span>
+          <span class="metric">Response time <strong>${formatResponseTime(responseTimeMs)}</strong></span>
+        </div>
         <div>${renderMarkdownLite(answer)}</div>
         <div class="source-grid">${sourceCards}</div>
       `;
@@ -358,6 +388,15 @@ def index() -> str:
 
     function resetChat() {
       chat.innerHTML = "";
+    }
+
+    function setAskLoading(isLoading) {
+      isAsking = isLoading;
+      ask.disabled = isLoading;
+      ask.textContent = isLoading ? "검색 중" : "검색";
+      document.querySelectorAll(".example").forEach((button) => {
+        button.disabled = isLoading;
+      });
     }
 
     async function loadSources() {
@@ -372,26 +411,28 @@ def index() -> str:
     }
 
     async function askQuestion() {
+      if (isAsking) return;
       const text = question.value.trim();
       if (!text) return;
       resetChat();
       addMessage("user", text);
       question.value = "";
-      ask.disabled = true;
-      ask.textContent = "검색 중";
+      setAskLoading(true);
       try {
         const res = await fetch("/api/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question: text })
         });
+        if (!res.ok) {
+          throw new Error(`요청 실패 (${res.status})`);
+        }
         const data = await res.json();
-        addAnswer(data.answer, data.sources);
+        addAnswer(data.answer, data.sources, data.mode, data.response_time_ms);
       } catch (error) {
         addMessage("assistant", `오류: ${error.message}`);
       } finally {
-        ask.disabled = false;
-        ask.textContent = "검색";
+        setAskLoading(false);
       }
     }
 

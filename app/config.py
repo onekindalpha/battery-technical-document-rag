@@ -16,11 +16,11 @@ class Settings:
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "lexical-char-ngram-v1")
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
     groq_model: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-    top_k: int = int(os.getenv("TOP_K", "4"))
+    top_k: int = int(os.getenv("TOP_K", "3"))
     chunk_size: int = int(os.getenv("CHUNK_SIZE", "900"))
     chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "150"))
     upload_path: Path = Path("data/uploads")
-    sample_docs_path: Path = Path("data/sample_docs")
+    knowledge_base_path: Path = Path("data/knowledge_base")
 
 
 settings = Settings()
