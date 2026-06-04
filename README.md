@@ -7,8 +7,9 @@ Battery RUL AI Inference System의 실험 메모, 데이터 품질 기준, 모�
 ## Demo
 
 - Live Demo: [Hugging Face Space](https://huggingface.co/spaces/onekindalpha/battery-technical-document-rag)
-- Demo Video: [GitHub Issue #3](https://github.com/onekindalpha/battery-technical-document-rag/issues/3#issue-4580582424)
 - Related Portfolio: [Battery RUL AI Inference System](https://github.com/onekindalpha/battery-rul-ai-inference-system)
+
+https://github.com/user-attachments/assets/96a7f969-18e0-41b3-989d-c8e688102889
 
 ## What It Does
 
