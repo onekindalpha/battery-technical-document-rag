@@ -2,12 +2,20 @@ from __future__ import annotations
 
 import shutil
 import time
+import hashlib
 from pathlib import Path
 
 from app.config import settings
 from app.document_processor import SUPPORTED_EXTENSIONS, create_chunks
 from app.llm_service import LLMService
-from app.schemas import AskResponse, IngestResponse
+from app.request_log import RequestLog
+from app.retrieval_eval import evaluate_retrieval_cases
+from app.schemas import (
+    AskResponse,
+    IngestResponse,
+    RetrievalEvalRequest,
+    RetrievalEvalResponse,
+)
 from app.vector_store import VectorStore
 
 
@@ -118,9 +126,12 @@ class DocumentRAGService:
             settings.vector_store_path,
             settings.collection_name,
             settings.embedding_model,
+            settings.vector_backend,
         )
         self.llm = LLMService(settings.groq_api_key, settings.groq_model)
+        self.request_log = RequestLog(settings.request_log_db_path)
         self._answer_cache: dict[tuple[object, ...], AskResponse] = {}
+        self.redis_client = self._connect_redis(settings.redis_url)
         settings.upload_path.mkdir(parents=True, exist_ok=True)
 
     def ingest_paths(self, paths: list[Path], copy_uploads: bool = True) -> IngestResponse:
@@ -159,8 +170,11 @@ class DocumentRAGService:
             effective_top_k,
         )
         cache_key = self._cache_key(question, effective_top_k, sources)
-        if cache_key in self._answer_cache:
-            return self._with_response_time(self._answer_cache[cache_key], started_at)
+        cached_response = self._get_cached_response(cache_key)
+        if cached_response:
+            response = self._with_response_time(cached_response, started_at)
+            self._record_request(question, response)
+            return response
 
         faq_answer = FAQ_ANSWERS.get(normalize_question(question))
         if faq_answer:
@@ -170,7 +184,8 @@ class DocumentRAGService:
                 mode="faq-cache",
                 response_time_ms=self._elapsed_ms(started_at),
             )
-            self._answer_cache[cache_key] = response
+            self._set_cached_response(cache_key, response)
+            self._record_request(question, response)
             return response
 
         answer, mode = self.llm.answer(question, sources)
@@ -180,11 +195,19 @@ class DocumentRAGService:
             mode=mode,
             response_time_ms=self._elapsed_ms(started_at),
         )
-        self._answer_cache[cache_key] = response
+        self._set_cached_response(cache_key, response)
+        self._record_request(question, response)
         return response
 
     def sources(self) -> list[str]:
         return self.vector_store.sources()
+
+    def evaluate_retrieval(self, request: RetrievalEvalRequest) -> RetrievalEvalResponse:
+        return evaluate_retrieval_cases(
+            request.cases,
+            request.top_k,
+            self.vector_store.search,
+        )
 
     @staticmethod
     def _diversify_sources(sources, limit: int):
@@ -229,6 +252,47 @@ class DocumentRAGService:
                 "response_time_ms": self._elapsed_ms(started_at),
             }
         )
+
+    def _record_request(self, question: str, response: AskResponse) -> None:
+        self.request_log.record(
+            question=question,
+            mode=response.mode,
+            response_time_ms=response.response_time_ms,
+            source_count=len(response.sources),
+        )
+
+    @staticmethod
+    def _connect_redis(redis_url: str):
+        if not redis_url:
+            return None
+        try:
+            import redis
+
+            client = redis.Redis.from_url(redis_url, decode_responses=True)
+            client.ping()
+            return client
+        except Exception:
+            return None
+
+    def _get_cached_response(self, cache_key: tuple[object, ...]) -> AskResponse | None:
+        if cache_key in self._answer_cache:
+            return self._answer_cache[cache_key]
+        if not self.redis_client:
+            return None
+        payload = self.redis_client.get(self._redis_key(cache_key))
+        if not payload:
+            return None
+        return AskResponse.model_validate_json(payload)
+
+    def _set_cached_response(self, cache_key: tuple[object, ...], response: AskResponse) -> None:
+        self._answer_cache[cache_key] = response
+        if self.redis_client:
+            self.redis_client.setex(self._redis_key(cache_key), 3600, response.model_dump_json())
+
+    @staticmethod
+    def _redis_key(cache_key: tuple[object, ...]) -> str:
+        raw_key = repr(cache_key).encode("utf-8")
+        return f"rag-answer:{hashlib.sha256(raw_key).hexdigest()}"
 
 
 service = DocumentRAGService()

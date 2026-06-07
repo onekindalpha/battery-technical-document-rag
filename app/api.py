@@ -3,10 +3,10 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 
 from app.config import settings
-from app.schemas import AskRequest, AskResponse, IngestResponse
+from app.schemas import AskRequest, AskResponse, IngestResponse, RetrievalEvalRequest, RetrievalEvalResponse
 from app.service import service
 
 router = APIRouter(prefix="/api")
@@ -19,6 +19,13 @@ def safe_filename(filename: str | None) -> str:
     return name
 
 
+def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
+    if not settings.api_auth_token:
+        return
+    if x_api_key != settings.api_auth_token:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key.")
+
+
 @router.get("/health")
 def health() -> dict[str, object]:
     return {"status": "ok", "sources": service.sources()}
@@ -29,7 +36,7 @@ def documents() -> dict[str, list[str]]:
     return {"documents": service.sources()}
 
 
-@router.post("/ingest", response_model=IngestResponse)
+@router.post("/ingest", response_model=IngestResponse, dependencies=[Depends(require_api_key)])
 def ingest(files: list[UploadFile] = File(...)) -> IngestResponse:
     try:
         saved_paths: list[Path] = []
@@ -45,6 +52,11 @@ def ingest(files: list[UploadFile] = File(...)) -> IngestResponse:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
 
-@router.post("/ask", response_model=AskResponse)
+@router.post("/ask", response_model=AskResponse, dependencies=[Depends(require_api_key)])
 def ask(request: AskRequest) -> AskResponse:
     return service.ask(request.question, request.top_k)
+
+
+@router.post("/eval/retrieval", response_model=RetrievalEvalResponse, dependencies=[Depends(require_api_key)])
+def evaluate_retrieval(request: RetrievalEvalRequest) -> RetrievalEvalResponse:
+    return service.evaluate_retrieval(request)

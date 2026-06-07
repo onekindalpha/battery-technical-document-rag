@@ -1,0 +1,24 @@
+services:
+  app:
+    build: .
+    ports:
+      - "7860:7860"
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
+      API_AUTH_TOKEN: ${API_AUTH_TOKEN:-}
+      VECTOR_STORE_PATH: /app/data/vector_store
+      REQUEST_LOG_DB_PATH: /app/data/request_logs.sqlite3
+      REDIS_URL: redis://redis:6379/0
+      TOP_K: ${TOP_K:-3}
+      CHUNK_SIZE: ${CHUNK_SIZE:-900}
+      CHUNK_OVERLAP: ${CHUNK_OVERLAP:-150}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"

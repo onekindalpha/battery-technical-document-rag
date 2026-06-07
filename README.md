@@ -30,23 +30,32 @@ The goal is not to replace the prediction model, but to support model review and
 - Built-in Battery RUL knowledge base
 - Markdown, PDF, and TXT document ingestion
 - Chunk-based retrieval with source citation
+- Local persistent vector store with optional Chroma backend
+- BM25 + dense hybrid retrieval with lightweight reranking
+- Retrieval evaluation endpoint with hit@k, MRR, and precision@k
 - Groq-powered grounded answer generation
 - Retrieval-only fallback when the LLM API is unavailable
 - FAQ cache for repeated operational questions
+- Optional API key authentication for protected endpoints
+- SQLite request logging for operational review
+- Optional Redis answer cache for repeated questions
 - Response mode and response time display
 - FastAPI backend with a lightweight web interface
-- Docker deployment on Hugging Face Spaces
+- Docker and Docker Compose deployment setup
 
 ## Architecture
 
 ```mermaid
 flowchart TB
     KB["Battery RUL<br/>Knowledge Base"] --> DP["Document Processing"]
-    DP --> VS["Vector Store"]
+    DP --> VS["Persistent<br/>Vector Store"]
+    DP --> BM25["BM25 Index"]
     Q["User Question"] --> API["FastAPI API"]
-    API --> RT["Retrieval"]
+    API --> RT["Hybrid Retrieval"]
     VS --> RT
-    RT --> CTX["Relevant Chunks"]
+    BM25 --> RT
+    RT --> RR["Lightweight Reranker"]
+    RR --> CTX["Relevant Chunks"]
     CTX --> LLM["LLM Answer"]
     CTX --> FB["Fallback Answer"]
     LLM --> UI["Web UI<br/>Answer + Sources + Time"]
@@ -67,18 +76,22 @@ flowchart LR
 ## Implementation Notes
 
 - **Retrieval first**: 질문을 바로 LLM에 보내지 않고, 먼저 관련 문서 chunk를 검색합니다.
+- **Hybrid retrieval**: dense retrieval 후보와 BM25 lexical 후보를 결합한 뒤, query overlap 기반 reranking으로 최종 근거를 고릅니다.
 - **Grounded generation**: 검색된 근거 문맥을 LLM prompt에 포함해 답변을 생성합니다.
 - **Citation UI**: 답변에 사용된 문서명과 chunk 번호를 함께 표시합니다.
+- **Retrieval evaluation**: expected source 기준으로 hit@k, MRR, precision@k를 계산해 검색 품질을 확인합니다.
 - **Fallback design**: LLM API key가 없거나 rate limit이 발생해도 검색 결과를 기반으로 검토할 수 있습니다.
+- **Backend operations**: API key 인증, SQLite request log, Redis cache, Docker Compose 구성을 통해 운영형 백엔드 구조로 확장했습니다.
 - **Operational UX**: 자주 묻는 질문 버튼, response time 표시, indexed source 목록을 통해 운영 도구처럼 사용할 수 있도록 구성했습니다.
 
 ## Tech Stack
 
 - Backend: FastAPI, Uvicorn
-- RAG: custom document processor, lexical embedding, persistent vector store
+- RAG: custom document processor, persistent vector store, optional Chroma backend, hashing embedding, BM25 + dense hybrid retrieval, lightweight reranking
 - LLM: Groq API
+- Auth/DB/Cache: optional API key authentication, SQLite request log, Redis answer cache
 - Frontend: server-rendered lightweight HTML/CSS/JavaScript
-- Deployment: Docker, Hugging Face Spaces
+- Deployment: Docker, Docker Compose, Hugging Face Spaces
 
 ## Knowledge Base
 
@@ -107,6 +120,14 @@ python -m app.main
 
 Open `http://localhost:7860`.
 
+Run with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+This starts the FastAPI app and a Redis container for answer caching.
+
 ## API
 
 ```bash
@@ -119,14 +140,40 @@ curl -X POST http://localhost:7860/api/ask \
 
 Interactive API documentation is available at `http://localhost:7860/docs`.
 
+### Retrieval evaluation
+
+```bash
+curl -X POST http://localhost:7860/api/eval/retrieval \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "top_k": 3,
+    "cases": [
+      {
+        "question": "RUL과 SoH는 무엇이 다른가요?",
+        "expected_sources": ["battery_rul_basics.md"]
+      }
+    ]
+  }'
+```
+
+When `API_AUTH_TOKEN` is set, protected endpoints require:
+
+```bash
+-H 'X-API-Key: your-api-token'
+```
+
 ## Environment variables
 
 | Variable | Description |
 | --- | --- |
 | `GROQ_API_KEY` | Optional. Enables generated RAG answers. |
 | `GROQ_MODEL` | Groq chat model identifier. |
+| `API_AUTH_TOKEN` | Optional. Enables API key protection for ask, ingest, and evaluation endpoints. |
+| `VECTOR_BACKEND` | `local` or `chroma`. Defaults to `local` for demo stability. |
 | `VECTOR_STORE_PATH` | Local vector store persistence path. |
 | `EMBEDDING_MODEL` | Embedding mode label. |
+| `REQUEST_LOG_DB_PATH` | SQLite path for API request logs. |
+| `REDIS_URL` | Optional Redis URL for answer cache. |
 | `TOP_K` | Number of retrieved source chunks. |
 | `CHUNK_SIZE` | Character length of each chunk. |
 | `CHUNK_OVERLAP` | Overlap between adjacent chunks. |
@@ -139,6 +186,8 @@ This repository is connected to the Battery RUL AI Inference System portfolio.
 - Battery Technical Document RAG: technical document search, grounded answer generation, and source-based review support
 
 Together, the two repositories show both the model-serving side and the technical-support/documentation side of an AI application.
+
+This repository is positioned as a backend-oriented LLM application: document ingestion, retrieval, citation-based answers, retrieval quality evaluation, API authentication, request logging, cache design, and containerized deployment.
 
 ## Security note
 
