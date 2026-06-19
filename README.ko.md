@@ -1,6 +1,6 @@
 # Battery Technical Document RAG Assistant
 
-**Language:** English | [한국어](./README.ko.md)
+**언어:** [English](./README.md) | 한국어
 
 Battery RUL AI Inference System의 실험 메모, 데이터 품질 기준, 모델 추론·운영 문서를 검색하고 근거 기반 답변을 제공하는 technical document RAG service입니다.
 
@@ -15,34 +15,34 @@ https://github.com/user-attachments/assets/96a7f969-18e0-41b3-989d-c8e688102889
 
 ## What It Does
 
-This project works as a technical document assistant for a Battery RUL monitoring workflow.
+이 프로젝트는 Battery RUL monitoring workflow를 위한 technical document assistant입니다.
 
-It helps users check:
+사용자는 다음 내용을 확인할 수 있습니다.
 
-- what to verify before early-cycle RUL prediction
-- how RUL and SoH should be interpreted in a dashboard
-- why uncertainty bands are useful for model review
-- what to check when a prediction result looks abnormal
-- which technical notes support a specific answer
+- early-cycle RUL prediction 전에 확인해야 할 항목
+- dashboard에서 RUL과 SoH를 해석하는 방법
+- model review에서 uncertainty band가 필요한 이유
+- prediction result가 이상해 보일 때 점검할 항목
+- 특정 답변을 뒷받침하는 technical note와 source citation
 
-The goal is not to replace the prediction model, but to support model review and operation with searchable technical context.
+목표는 prediction model을 대체하는 것이 아니라, model review와 운영 검토를 searchable technical context로 보조하는 것입니다.
 
 ## Key Features
 
 - Built-in Battery RUL knowledge base
-- Markdown, PDF, and TXT document ingestion
+- Markdown, PDF, TXT document ingestion
 - Chunk-based retrieval with source citation
 - Local persistent vector store with optional Chroma backend
 - BM25 + dense hybrid retrieval with lightweight reranking
-- Retrieval evaluation with hit@k, MRR, and precision@k
+- hit@k, MRR, precision@k 기반 retrieval evaluation
 - Groq-powered grounded answer generation
-- Retrieval-only fallback when the LLM API is unavailable
-- FAQ cache for repeated operational questions
-- Optional API key authentication for protected endpoints
-- SQLite request logging for operational review
-- Optional Redis answer cache for repeated questions
+- LLM API unavailable 상황의 retrieval-only fallback
+- FAQ cache
+- Optional API key authentication
+- SQLite request logging
+- Optional Redis answer cache
 - Response mode and response time display
-- FastAPI backend with a lightweight web interface
+- FastAPI backend with lightweight web interface
 - Docker and Docker Compose deployment setup
 
 ## Architecture
@@ -84,7 +84,6 @@ flowchart LR
 - **Retrieval evaluation**: expected source 기준으로 hit@k, MRR, precision@k를 계산해 검색 품질을 확인합니다.
 - **Fallback design**: LLM API key가 없거나 rate limit이 발생해도 검색 결과를 기반으로 검토할 수 있습니다.
 - **Backend operations**: API key 인증, SQLite request log, Redis cache, Docker Compose 구성을 통해 운영형 백엔드 구조로 확장했습니다.
-- **Operational UX**: 자주 묻는 질문 버튼, response time 표시, indexed source 목록을 통해 운영 도구처럼 사용할 수 있도록 구성했습니다.
 
 ## Tech Stack
 
@@ -97,7 +96,7 @@ flowchart LR
 
 ## Knowledge Base
 
-The demo includes short internal-style notes for Battery RUL model review:
+데모에는 Battery RUL model review를 위한 compact public demo corpus가 포함되어 있습니다.
 
 - Battery RUL project overview
 - Data quality checklist
@@ -106,19 +105,15 @@ The demo includes short internal-style notes for Battery RUL model review:
 - Deployment and operations notes
 - RUL and SoH basics
 
-These documents are written as a compact public demo corpus, not as copies of the original papers or private project files.
-
 ## Development Notes
 
-Local setup, API examples, retrieval evaluation requests, environment variables, Docker Compose usage, and security notes are separated into [DEVELOPMENT.md](./DEVELOPMENT.md).
+로컬 실행, API 예제, retrieval evaluation request, environment variables, Docker Compose usage, security note는 [DEVELOPMENT.md](./DEVELOPMENT.md)에 분리했습니다.
 
 ## Portfolio Context
 
-This repository is connected to the Battery RUL AI Inference System portfolio.
+이 레포는 Battery RUL AI Inference System과 연결됩니다.
 
-- Battery RUL AI Inference System: model inference, API, dashboard, and deployment
-- Battery Technical Document RAG: technical document search, grounded answer generation, and source-based review support
+- Battery RUL AI Inference System: model inference, API, dashboard, deployment
+- Battery Technical Document RAG: technical document search, grounded answer generation, source-based review support
 
-Together, the two repositories show both the model-serving side and the technical-support/documentation side of an AI application.
-
-This repository is positioned as a backend-oriented LLM application: document ingestion, retrieval, citation-based answers, retrieval quality evaluation, API authentication, request logging, cache design, and containerized deployment.
+두 레포를 함께 보면 AI application의 model-serving side와 technical-support/documentation side를 모두 보여줄 수 있습니다.
