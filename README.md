@@ -32,7 +32,7 @@ The goal is not to replace the prediction model, but to support model review and
 - Chunk-based retrieval with source citation
 - Local persistent vector store with optional Chroma backend
 - BM25 + dense hybrid retrieval with lightweight reranking
-- Retrieval evaluation endpoint with hit@k, MRR, and precision@k
+- Retrieval evaluation with hit@k, MRR, and precision@k
 - Groq-powered grounded answer generation
 - Retrieval-only fallback when the LLM API is unavailable
 - FAQ cache for repeated operational questions
@@ -106,77 +106,9 @@ The demo includes short internal-style notes for Battery RUL model review:
 
 These documents are written as a compact public demo corpus, not as copies of the original papers or private project files.
 
-## Run locally
+## Development Notes
 
-Python 3.11 or 3.12 is recommended.
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-python -m app.main
-```
-
-Open `http://localhost:7860`.
-
-Run with Docker Compose:
-
-```bash
-docker compose up --build
-```
-
-This starts the FastAPI app and a Redis container for answer caching.
-
-## API
-
-```bash
-curl http://localhost:7860/api/health
-
-curl -X POST http://localhost:7860/api/ask \
-  -H 'Content-Type: application/json' \
-  -d '{"question":"초기 cycle 기반 RUL 예측에서 확인할 항목은 무엇인가요?"}'
-```
-
-Interactive API documentation is available at `http://localhost:7860/docs`.
-
-### Retrieval evaluation
-
-```bash
-curl -X POST http://localhost:7860/api/eval/retrieval \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "top_k": 3,
-    "cases": [
-      {
-        "question": "RUL과 SoH는 무엇이 다른가요?",
-        "expected_sources": ["battery_rul_basics.md"]
-      }
-    ]
-  }'
-```
-
-When `API_AUTH_TOKEN` is set, protected endpoints require:
-
-```bash
--H 'X-API-Key: your-api-token'
-```
-
-## Environment variables
-
-| Variable | Description |
-| --- | --- |
-| `GROQ_API_KEY` | Optional. Enables generated RAG answers. |
-| `GROQ_MODEL` | Groq chat model identifier. |
-| `API_AUTH_TOKEN` | Optional. Enables API key protection for ask, ingest, and evaluation endpoints. |
-| `VECTOR_BACKEND` | `local` or `chroma`. Defaults to `local` for demo stability. |
-| `VECTOR_STORE_PATH` | Local vector store persistence path. |
-| `EMBEDDING_MODEL` | Embedding mode label. |
-| `REQUEST_LOG_DB_PATH` | SQLite path for API request logs. |
-| `REDIS_URL` | Optional Redis URL for answer cache. |
-| `TOP_K` | Number of retrieved source chunks. |
-| `CHUNK_SIZE` | Character length of each chunk. |
-| `CHUNK_OVERLAP` | Overlap between adjacent chunks. |
+Local setup, API examples, retrieval evaluation requests, environment variables, Docker Compose usage, and security notes are separated into [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ## Portfolio Context
 
@@ -188,7 +120,3 @@ This repository is connected to the Battery RUL AI Inference System portfolio.
 Together, the two repositories show both the model-serving side and the technical-support/documentation side of an AI application.
 
 This repository is positioned as a backend-oriented LLM application: document ingestion, retrieval, citation-based answers, retrieval quality evaluation, API authentication, request logging, cache design, and containerized deployment.
-
-## Security note
-
-Do not commit API keys. Store secrets only in `.env` locally or in the deployment platform's secret manager.
